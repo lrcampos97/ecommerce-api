@@ -1,0 +1,42 @@
+{
+  "name": "ecommerce-api",
+  "version": "1.0.0",
+  "description": "Mini E-commerce API",
+  "main": "index.js",
+  "scripts": {
+    "prettier": "prettier -c ./src",
+    "eslint": "eslint ./src",
+    "prettier:fix": "prettier --write ./src",
+    "eslint:fix": "eslint --fix ./src",
+    "format": "pnpm run prettier:fix && pnpm run eslint:fix",
+    "build": "rm -rf dist && node_modules/.bin/tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "eslint": "^8.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.10.4",
+    "@elastic/elasticsearch": "^8.14.0",
+    "@prisma/client": "^5.16.2",
+    "@types/ioredis": "^5.0.0",
+    "@types/redis": "^4.0.11",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "elasticsearch": "^16.7.3",
+    "express": "^4.19.2",
+    "graphql": "^16.9.0",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0",
+    "prisma": "^5.16.2",
+    "redis": "^4.6.15",
+    "type-graphql": "2.0.0-rc.1"
+  }
+}

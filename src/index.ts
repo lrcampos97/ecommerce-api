@@ -1,0 +1,1 @@
+console.log(`🚀 Server ready at teste`);
