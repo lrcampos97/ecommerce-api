@@ -7,9 +7,50 @@ import { validateCategory, validateUser } from '../common/utils';
 import { clearCache, getCache, setCache } from '../common/redis';
 import { CacheKeys } from '../types';
 import { logger } from '../common/pino';
+import { elasticSearch } from '../common/elasticSearch';
 
 @Resolver(() => Product)
 export class ProductResolver {
+  /**
+   * Query to search products by name and description using Elasticsearch, with partial matches.
+   * @param query {string} query
+   * @returns Product[]
+   */
+  @Query(() => [Product])
+  async searchProducts(@Arg('query') query: string): Promise<Product[]> {
+    try {
+      logger.info('Querying products from Elasticsearch...');
+      const { body } = await elasticSearch.search({
+        index: 'products',
+        body: {
+          query: {
+            bool: {
+              should: [
+                { wildcard: { name: `*${query}*` } }, // using wildcard to search for partial matches
+                { wildcard: { description: `*${query}*` } },
+              ],
+            },
+          },
+        },
+      });
+
+      const products = await prismaClient.product.findMany({
+        where: {
+          id: {
+            in: body.hits.hits.map((hit: { _id: string }) => hit._id),
+          },
+        },
+        include: {
+          category: true,
+        },
+      });
+
+      return products;
+    } catch (error) {
+      throw new Error(`Failed to search products: ${(error as Error).message}`);
+    }
+  }
+
   /**
    * Query to get a list of products, including the full category details.
    * First try to get the data from the cache, if not available, query the database
@@ -63,7 +104,7 @@ export class ProductResolver {
   }
 
   /**
-   * Mutation to add a new Product
+   * Mutation to add a new Product to the database and index it in Elasticsearch
    * @param data {ProductInput} ProductInput
    * @returns Product
    */
@@ -84,6 +125,15 @@ export class ProductResolver {
 
       logger.info('Clearing products cache...');
       await clearCache(CacheKeys.PRODUCTS_ALL);
+
+      await elasticSearch.index({
+        index: 'products',
+        id: product.id,
+        body: {
+          name: product.name,
+          description: product.description,
+        },
+      });
 
       logger.info(`Successfully created product with ID ${product.id}`);
       return product;
@@ -125,6 +175,17 @@ export class ProductResolver {
         },
       });
 
+      await elasticSearch.update({
+        index: 'products',
+        id: updatedProduct.id,
+        body: {
+          doc: {
+            name: updatedProduct.name,
+            description: updatedProduct.description,
+          },
+        },
+      });
+
       logger.info(`Product with ${id} updated!`);
       return updatedProduct;
     } catch (error) {
@@ -148,6 +209,11 @@ export class ProductResolver {
 
       logger.info('Clearing products cache...');
       await clearCache(CacheKeys.PRODUCTS_ALL);
+
+      await elasticSearch.delete({
+        index: 'products',
+        id,
+      });
 
       logger.info(`Product with ${id} mark as deleted!`);
       return true;
