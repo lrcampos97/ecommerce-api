@@ -55,6 +55,14 @@ Ts-node-dev is used for running the application in development mode. It provides
 
 Store only the name and description fields in Elasticsearch for efficient search indexing, while the full product details are stored in PostgreSQL.
 
+### Avoid circular dependencies on graphql types
+
+I've made use of loadash package to use the function `omit`, to create an extended class for Product.
+
+### Git atomic commits
+
+You can check all the development flow through the atomic commits [here](https://github.com/lrcampos97/ecommerce-api/pull/1/commits).
+
 ## Setup and Usage
 
 ### Prerequisites
