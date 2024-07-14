@@ -12,13 +12,12 @@ model Product {
   name        String
   description String
   value       Decimal
-  currency    Currency @default(USD)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([name])
   @@index([description])
@@ -42,11 +41,4 @@ model User {
 
   @@index([email])
   @@index([name])
-}
-
-enum Currency {
-  GBP
-  EUR
-  USD
-  BRL
 }
