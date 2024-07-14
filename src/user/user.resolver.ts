@@ -4,17 +4,30 @@ import { prismaClient } from '../common/prisma';
 import { UserInput } from './inputs/user-input';
 import { UserUpdateInput } from './inputs/user-update-input';
 import { validateUser } from '../common/utils';
+import { clearCache, getCache, setCache } from '../common/redis';
+import { CacheKeys } from '../types';
+import { logger } from '../common/pino';
 
 @Resolver(() => User)
 export class UserResolver {
   /**
-   * Query to get a list of users
+   * Query to get a list of users, including the full products details.
+   * First try to get the data from the cache, if not available, query the database
+   * and store the result in the cache.
    * @returns User[]
    */
   @Query(() => [User])
   async getUsers(): Promise<User[]> {
     try {
-      return await prismaClient.user.findMany({
+      const cachedUsers = await getCache(CacheKeys.USERS_ALL);
+
+      if (cachedUsers) {
+        logger.info('Retrieving users from cache...');
+        return JSON.parse(cachedUsers, (key, value) =>
+          key === 'createdAt' || key === 'updatedAt' ? new Date(value) : value,
+        );
+      }
+      const users = await prismaClient.user.findMany({
         include: {
           products: {
             include: {
@@ -23,6 +36,11 @@ export class UserResolver {
           },
         },
       });
+
+      logger.info('Updating users cache...');
+      await setCache(CacheKeys.USERS_ALL, JSON.stringify(users));
+
+      return users;
     } catch (error) {
       throw new Error(`Failed to query users: ${(error as Error).message}`);
     }
@@ -72,6 +90,10 @@ export class UserResolver {
         },
       });
 
+      logger.info('Clearing users cache...');
+      await clearCache(CacheKeys.USERS_ALL);
+
+      logger.info(`Successfully created user with ID ${user.id}`);
       return user;
     } catch (error) {
       throw new Error(`Failed to create user: ${(error as Error).message}`);
@@ -96,7 +118,10 @@ export class UserResolver {
     }
 
     try {
-      return await prismaClient.user.update({
+      logger.info('Clearing users cache...');
+      await clearCache(CacheKeys.USERS_ALL);
+
+      const updatedUser = await prismaClient.user.update({
         where: { id },
         data: userData,
         include: {
@@ -107,6 +132,9 @@ export class UserResolver {
           },
         },
       });
+
+      logger.info(`User with ${id} updated!`);
+      return updatedUser;
     } catch (error) {
       throw new Error(`Failed to update user: ${(error as Error).message}`);
     }
@@ -122,9 +150,14 @@ export class UserResolver {
     await validateUser(id);
 
     try {
+      logger.info('Clearing users cache...');
+      await clearCache(CacheKeys.USERS_ALL);
+
       await prismaClient.user.delete({
         where: { id },
       });
+
+      logger.info(`User with ${id} mark as deleted!`);
       return true;
     } catch (error) {
       throw new Error(`Failed to delete user: ${(error as Error).message}`);

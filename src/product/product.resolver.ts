@@ -4,21 +4,40 @@ import { Product } from './inputs/product';
 import { ProductInput } from './inputs/product-input';
 import { ProductUpdateInput } from './inputs/product-update-input';
 import { validateCategory, validateUser } from '../common/utils';
+import { clearCache, getCache, setCache } from '../common/redis';
+import { CacheKeys } from '../types';
+import { logger } from '../common/pino';
 
 @Resolver(() => Product)
 export class ProductResolver {
   /**
-   * Query to get a list of products, including the full category and user details
+   * Query to get a list of products, including the full category details.
+   * First try to get the data from the cache, if not available, query the database
+   * and store the result in the cache.
    * @returns Product[]
    */
   @Query(() => [Product])
   async getProducts(): Promise<Product[]> {
     try {
-      return await prismaClient.product.findMany({
+      const cachedProducts = await getCache(CacheKeys.PRODUCTS_ALL);
+
+      if (cachedProducts) {
+        logger.info('Retrieving products from cache...');
+        return JSON.parse(cachedProducts, (key, value) =>
+          key === 'createdAt' || key === 'updatedAt' ? new Date(value) : value,
+        );
+      }
+
+      const products = await prismaClient.product.findMany({
         include: {
           category: true,
         },
       });
+
+      logger.info('Updating products cache...');
+      await setCache(CacheKeys.PRODUCTS_ALL, JSON.stringify(products));
+
+      return products;
     } catch (error) {
       throw new Error(`Failed to query products: ${(error as Error).message}`);
     }
@@ -63,6 +82,10 @@ export class ProductResolver {
         },
       });
 
+      logger.info('Clearing products cache...');
+      await clearCache(CacheKeys.PRODUCTS_ALL);
+
+      logger.info(`Successfully created product with ID ${product.id}`);
       return product;
     } catch (error) {
       throw new Error(`Failed to add product: ${(error as Error).message}`);
@@ -91,13 +114,19 @@ export class ProductResolver {
     }
 
     try {
-      return await prismaClient.product.update({
+      logger.info('Clearing products cache...');
+      await clearCache(CacheKeys.PRODUCTS_ALL);
+
+      const updatedProduct = await prismaClient.product.update({
         where: { id },
         data: productData,
         include: {
           category: true,
         },
       });
+
+      logger.info(`Product with ${id} updated!`);
+      return updatedProduct;
     } catch (error) {
       throw new Error(`Failed to update product: ${(error as Error).message}`);
     }
@@ -116,6 +145,11 @@ export class ProductResolver {
       await prismaClient.product.delete({
         where: { id },
       });
+
+      logger.info('Clearing products cache...');
+      await clearCache(CacheKeys.PRODUCTS_ALL);
+
+      logger.info(`Product with ${id} mark as deleted!`);
       return true;
     } catch (error) {
       throw new Error(`Failed to delete product: ${(error as Error).message}`);

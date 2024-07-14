@@ -4,6 +4,7 @@ import { Category } from './inputs/category';
 import { CategoryInput } from './inputs/category-input';
 import { UpdateCategoryInput } from './inputs/category-update-input';
 import { validateCategory } from '../common/utils';
+import { logger } from '../common/pino';
 
 @Resolver()
 export class CategoryResolver {
@@ -59,6 +60,7 @@ export class CategoryResolver {
         data,
       });
 
+      logger.info(`Successfully created category with ID ${category.id}`);
       return category;
     } catch (error) {
       throw new Error(`Failed to add category: ${(error as Error).message}`);
@@ -79,6 +81,7 @@ export class CategoryResolver {
         where: { id },
       });
 
+      logger.info(`Category with ${id} mark as deleted!`);
       return true;
     } catch (error) {
       throw new Error(`Failed to delete category: ${(error as Error).message}`);
@@ -106,6 +109,7 @@ export class CategoryResolver {
         },
       });
 
+      logger.info(`Category with ${id} updated!`);
       return category;
     } catch (error) {
       throw new Error(`Failed to update category: ${(error as Error).message}`);
