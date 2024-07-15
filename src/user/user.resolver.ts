@@ -150,12 +150,12 @@ export class UserResolver {
     await validateUser(id);
 
     try {
-      logger.info('Clearing users cache...');
-      await clearCache(CacheKeys.USERS_ALL);
-
       await prismaClient.user.delete({
         where: { id },
       });
+
+      logger.info('Clearing users cache...');
+      await clearCache(CacheKeys.USERS_ALL);
 
       logger.info(`User with ${id} mark as deleted!`);
       return true;
