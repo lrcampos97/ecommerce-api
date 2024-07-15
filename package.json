@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Mini E-commerce API",
   "main": "index.js",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "scripts": {
     "prettier": "prettier -c ./src",
     "eslint": "eslint ./src",

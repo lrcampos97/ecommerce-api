@@ -17,7 +17,7 @@ import { UserResolver } from './user/user.resolver';
   });
 
   const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000 },
+    listen: { port: Number(process.env.PORT) || 4000 },
   });
 
   logger.info(`Apollo server is ready at ${url}`);
